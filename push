@@ -1,0 +1,5 @@
+#!/bin/bash
+[ $# -lt 1 ] && echo "args error" && exit 1
+git add -A
+git commit -m "$1"
+git push
