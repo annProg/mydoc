@@ -1,0 +1,25 @@
+graph {
+	rankdir=TB;
+	node[fontname="Simsun"]
+	
+	kernel [label="核心模块"];
+	basic [label="基础模块"];
+	other [label="第三方模块"];
+	
+	kernel -- "http";
+	kernel -- "event";
+	kernel -- "mail";
+	
+	basic -- "Http Access";
+	basic -- "Http FastCGI";
+	basic -- "Http Proxy";
+	basic -- "Http Rewrite";
+	
+	other -- "Http Upstream \nRequest Hash";
+	other -- "Notice"
+	other -- "Http Access Key"
+	
+	"nginx" -- kernel;
+	"nginx" -- basic;
+	"nginx" -- other;
+}
