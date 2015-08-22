@@ -347,6 +347,33 @@ sda2              0.64        10.13         9.71    2400057    2300068
 | kB_read | 监控时间内的总读数据量, 单位kB |
 | kB_wrtn | 监控时间内的总写数据量, 单位kB |
 
+```
+[root@HADOOP-215 data1]# iostat -d -x /dev/sda 1 2
+Linux 2.6.32-431.29.2.el6.x86_64 (HADOOP-215) 	2015年08月20日 	_x86_64_	(1 CPU)
+
+Device:         rrqm/s   wrqm/s     r/s     w/s   rsec/s   wsec/s avgrq-sz avgqu-sz   await  svctm  %util
+sda               1.86     4.68    0.78    0.47    91.97    41.23   106.97     0.26  205.98   9.42   1.17
+
+Device:         rrqm/s   wrqm/s     r/s     w/s   rsec/s   wsec/s avgrq-sz avgqu-sz   await  svctm  %util
+sda               0.00     0.00    0.00    0.00     0.00     0.00     0.00     0.00    0.00   0.00   0.00
+```
+
+```
+rrqm/s: 每秒进行 merge 的读操作数目。即 delta(rmerge)/s
+wrqm/s: 每秒进行 merge 的写操作数目。即 delta(wmerge)/s
+r/s: 每秒完成的读 I/O 设备次数。即 delta(rio)/s
+w/s: 每秒完成的写 I/O 设备次数。即 delta(wio)/s
+rsec/s: 每秒读扇区数。即 delta(rsect)/s
+wsec/s: 每秒写扇区数。即 delta(wsect)/s
+rkB/s: 每秒读K字节数。是 rsect/s 的一半，因为每扇区大小为512字节。
+wkB/s: 每秒写K字节数。是 wsect/s 的一半。
+avgrq-sz: 平均每次设备I/O操作的数据大小 (扇区)。即 delta(rsect+wsect)/delta(rio+wio)
+avgqu-sz: 平均I/O队列长度。即 delta(aveq)/s/1000 (因为aveq的单位为毫秒)。
+await: 平均每次设备I/O操作的等待时间 (毫秒)。即 delta(ruse+wuse)/delta(rio+wio)
+svctm: 平均每次设备I/O操作的服务时间 (毫秒)。即 delta(use)/delta(rio+wio)
+%util: 一秒中有百分之多少的时间用于 I/O 操作，或者说一秒中有多少时间 I/O 队列是非空的。即 delta(use)/s/1000 (因为use的单位为毫秒)
+```
+
 ### sar
 
 * sar -d 可以观察每一块磁盘设备的IO.
@@ -690,4 +717,5 @@ nohup watch -n 2 'ps aux |grep php |grep -v grep >/tmp/php.log' &>/dev/null &
 [2]. 高俊峰. 高性能Linux服务器构建实战：运维监控、性能调优与集群应用[M]// 北京华章图文信息有限公司, 2012.
 [3]. Linux tcpdump命令详解. http://www.cnblogs.com/ggjucheng/archive/2012/01/14/2322659.html
 [4]. Linux工具快速教程. http://linuxtools-rst.readthedocs.org/zh_CN/latest/index.html
+[5]. iostat命令详解. http://blog.csdn.net/wyzxg/article/details/3985221
 ```
