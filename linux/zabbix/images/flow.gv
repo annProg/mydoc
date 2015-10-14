@@ -1,0 +1,10 @@
+digraph flow {
+	node[shape="box"];
+	rankdir = LR;
+	trigger [label="Triger : \n Not classified \n Information \n Warning \n Average \n High \n Disaster"]
+	action [label="Action: \n email \n sms \n ..."]
+
+	start -> item -> trigger -> action -> end;
+	trigger:s -> event:n;
+
+}

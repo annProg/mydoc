@@ -1,0 +1,30 @@
+digraph zabbix {
+		fontname = simsun;
+		rankdir = TB;
+		subgraph cluster_server {
+			label = "zabbix Server";
+			node [shape="box3d"];
+			server [label="Server"];
+			web [label="web", shape="box"];
+			db [label="database", shape="box"];
+		}
+		
+		proxy [shape="box3d", label = "zabbix Proxy";];
+		
+		
+		subgraph cluster_agent {
+			label = "zabbix Agent";
+			node [shape="box3d"];
+			agent1 [label="agent1"];
+			agent2 [label="agent2"];
+		}
+		
+		{agent1,agent2} -> proxy;
+		proxy -> server;
+		
+		server -> db;
+		db -> web;
+		
+		"Engineer" [shape=plaintext];
+		web -> "Engineer";
+}

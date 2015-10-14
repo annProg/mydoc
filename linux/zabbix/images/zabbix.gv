@@ -1,0 +1,50 @@
+digraph zabbix {
+		fontname = simsun;
+		rankdir = TB;
+		
+		subgraph cluster_genera {
+			label = "普通方式";
+		
+			node [shape="box3d"];
+			agent1 [label="agent1"];
+			agent2 [label="agent2"];
+		}
+		
+		subgraph cluster_proxy {
+			label = "代理方式";
+			
+			proxy [shape="box3d", label = "zabbix Proxy";];
+			
+			
+			subgraph cluster_agent {
+				label = "zabbix Agent";
+				node [shape="box3d"];
+				agent1_proxy [label="agent1"];
+				agent2_proxy [label="agent2"];
+			}
+			
+			{agent1_proxy,agent2_proxy} -> proxy;
+			
+		}
+		
+		subgraph cluster_web {
+			web [label="web", shape="box"];
+			db [label="database", shape="box"];
+		}
+		
+		server [label="Server",shape="box3d"];
+		server -> db;
+		db -> web;
+		
+		"Engineer" [shape=plaintext];
+		web -> "Engineer";
+		
+		agent1 -> server;
+		agent2 -> server;
+		proxy -> server;
+
+
+
+		
+
+}

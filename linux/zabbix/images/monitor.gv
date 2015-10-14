@@ -1,0 +1,49 @@
+digraph zabbix {
+	fontname = "SimSun";
+	node [shape="box",fontname="SimSun"];
+	edge [fontname="SimSun"];
+	rankdir = LR;
+	subgraph cluster_template {
+		label = "template";
+		node [shape="cds"];
+		template [shape="note"];
+		item;
+		trigger;
+		agraph[label="graph"];
+	}
+	
+	template:e -> item:e;
+	template:e -> trigger:e;
+	template:e -> agraph:e;
+		
+	
+	subgraph cluster_trigger {
+	
+	}
+	
+	addhost [label="主机"];
+	additem [label="监控项"];
+	addtemplate [label="模板"];
+	addtrigger [label="触发器"];
+	addgraph [label="图形"];
+	addaction [label="告警动作"];
+	
+	start [label="web前端"];
+	start -> addhost [label="添加"];
+	addhost -> additem [label="添加"];
+	addhost -> addtemplate [label="关联"]
+	additem -> addgraph [label="添加"];
+	trigger -> addaction [label="触发"];
+	additem -> addtrigger [label="添加"];
+	addtrigger -> addaction [label="触发"];
+	addaction -> end;
+	
+	
+	
+	action [label="step:动作步骤\nDetails:动作内容\nStart in:开始时间\nDuring:持续时间"]
+	addtemplate -> template;
+	trigger -> event [label="产生"];
+	addaction -> action;
+		
+	
+}
