@@ -50,9 +50,13 @@ postqueue -p    #查看队列
 postsuper -d ALL deferred #清除deffered队列
 ```
 
+## 用户权限相关
+action不生效，有可能是用户权限导致的（对主机没有读权限）
+
+1. 用户组，设置许可权
+2. 用户默认继承组的权限
+
 ## 参考资料
-
-
 
 ```
 [1]. https://www.zabbix.com/forum/showthread.php?t=25417
