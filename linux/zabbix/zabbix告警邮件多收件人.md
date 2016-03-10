@@ -93,4 +93,4 @@ if __name__ == '__main__':
 
 ## zabbix配置
 
-1. 修改告警脚本后最好重启zabbix-server，
+1. 
