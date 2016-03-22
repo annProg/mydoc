@@ -1,0 +1,8 @@
+digraph upstream_app {
+	rankdir=LR;
+	node [shape=record];
+	
+	lvs [lable="LVS"];
+	lvs -> tengine1,tengine2,tengine3;
+	tengine1,tengine2,tengine3->upstream_app1,upstream_app2,upstream_app3;
+}

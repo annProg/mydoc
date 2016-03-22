@@ -1,0 +1,37 @@
+digraph zabbix {
+	fontname = "SimSun";
+	node [shape=Mrecord,fontname="SimSun"];
+	edge [fontname="SimSun"];
+	
+	subgraph cluster_gen {
+		rankdir=LR;
+		fontname = "SimSun";
+		label = " 监控生成器";
+		list[label=" LLD获取Tengine列表\nreqstat.sh[nginxlist,nginx.list]"];
+		hostprotot[label=" 主机原型\n\{#TAG\}_ReqStat_\{#REQSTAT_IP\}"];
+	}
+	
+	subgraph cluster_tpl {
+		rankdir=RL;
+		fontname = "SimSun";
+		label = " reqstat模板";
+		itemproto [label=" 项目原型\n http_status_2xx_\{#APP_NAME\}等"];
+		graphproto [label=" 图形原型\n http_5xx-\{#APP_NAME\}等"]
+		lld [label="LLD获取APP列表\nreqstat.sh[applist,nginx.list]"];
+		
+	}
+	
+	lld -> itemproto[label=" 获取{#APP_NAME}json串"];
+	itemproto -> graphproto [label=" 图形"];
+	
+	list -> hostprotot [label=" 创建主机"];
+	
+	host [label=" Tengine主机\n TAG_ReqStat_10.0.0.1"];
+	get[label=" LLD数据采集器\nreqstat.sh[getstat,nginx.list]\n(返回空json，仅做定时任务)"];
+
+	hostprotot,itemproto -> host [label=" 创建监控项"];
+	graphproto -> host;
+	get -> host [label="zabbix_sender"]
+
+
+}
