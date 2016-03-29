@@ -1,14 +1,16 @@
 # 基于http_reqstat模块和zabbix的Tengine监控方法
 
-Tengine的http_reqstat_module提供了监控Tengine运行状态的方法，能根据自定义变量（req_status_zone）分别统计Tengine的运行状况（域名，URI等）。本文记录了一种使用http_reqstat模块作为数据源，zabbix作为数据存储及展示，grafana作为前端展示的Tengine监控方案。
+Tengine的http_reqstat_module提供了监控Tengine运行状态的方法，能根据自定义变量（req_status_zone）统计Tengine的运行状况（域名，URI等）。本文记录了一种使用http_reqstat模块作为数据源，zabbix作为数据存储及展示，grafana作为前端展示的Tengine监控方案。
 本文使用的Tengine版本为2.1.1，zabbix版本为3.0， grafana版本为2.6。
 
-## 业务结构和数据定义
+## Tengine reqstat数据形式
 
-reqsat能根据不同的变量来统计Tengine状态，因此首先要根据业务需求确定需要统计的项目。本文接触的业务使用多台Tengine做反向代理，每个APP有自己独享的upstream，有一个或多个Location，但不一定使用不同的域名。
+### 业务结构
+reqsat能根据不同的变量来统计Tengine状态，因此首先要根据业务需求确定需要统计的项目。本文接触的业务分属于不同的集群，每个集群使用多台Tengine做反向代理，每个APP有自己独享的upstream，有一个或多个Location，但不一定使用相同的域名。
 
-![业务结构](reqstat_apparch.png)
+![](img/reqstat_apparch.png)
 
+### Tengine配置
 使用URI作为自定义变量会导致统计项过多（考虑404的URI），使用域名又不能很好的区分APP。因此使用upstream名称作为自定义变量是最好的选择。
 
 ```
@@ -28,6 +30,7 @@ http {
 }
 ```
 
+### reqstat数据形式
 访问 /reqstat，数据形式如下：
 
 ```
@@ -74,13 +77,59 @@ httpups4xx upstream返回4xx响应的请求总数
 httpups5xx upstream返回5xx响应的请求总数
 ```
 
-# 数据存储方案
+## 数据存储方案
+### 物理结构与zabbix的对应关系
+使用zabbix存储监控数据，物理结构对应zabbix组织形式如图：
 
-使用zabbix 3.0做数据存储。zabbix 3.0支持主机原型，利用LLD获取Tengine列表，然后主机原型创建主机并链接reqstat定制模板。模板中使用LLD做定时任务。结构如图。
+![](img/reqstat_zabbix_ds.png)
 
-![](reqstat_zabbix.png)
+本文使用的zabbix版本为3.0，该版本有 host prototype和application prototype功能，可以使用LLD自动生成主机，item prototype里可以设置item所属的application prototype。因此可以实现上图中 `APP upstream名称` 和 `zabbix application` 的对应关系。
 
-图中涉及代码片段如下：
+### 监控项单位
+监控的项目大致分为3类：
+
+* request 请求数量，包含总请求量，各http_status请求量等，期望存储单位 request/秒 
+* request time 请求时间，期望存储单位 rt/请求
+* byte 流量，存储单位 B/秒
+
+### 监控结构图
+监控的大致流程为：
+
+1. 列表生成器LLD获取Tengine IP列表，需要包含Tengine的集群标签（不同集群需要链接不同的模板）
+2. 基于列表生成器LLD的host prototype创建HOST，并链接模板
+3. 模板LLD获取APP LIST，获得item prototype，application prototype需要的宏
+4. HOST基于模板prototype创建item，application等
+5. 数据采集LLD发送数据到zabbix
+
+如图所示：
+
+![](img/reqstat_zabbix.png)
+
+## 监控实现
+
+本文需要建立一个zabbix模板，并实现监控控制器脚本（即上节图中 reqstat.sh）。
+
+### zabbix模板
+
+需要注意item prototype中key的Type为 Zabbix Trapper，数据类型均为 Numberic(float)，Application prototype使用宏 {#APP_NAME}。
+
+![](img/template.png)
+
+### 监控控制器脚本
+
+#### Tengine列表
+列表文件格式为 TAG,IP形式，TAG主要用来标记集群名称。
+
+```
+function NginxList()
+{
+        str=`awk -F ',' '{print "{\"{#TAG}\":\""$1"\",\"{#REQSTAT_IP}\":\""$2"\"},"}' $nginxlist |sort -u |sed '/^$/d' |tr -d '\n'`
+        echo -n "{\"data\":[$str]}" |sed 's/,\]/\]/g'
+}
+```
+
+#### app列表
+
 ```
 function AppList()
 {
@@ -96,30 +145,72 @@ function AppList()
         undefine='{"{#APP_NAME}":"UNDEFINED"}'
         echo -n "{\"data\":[$str$undefine]}"
 }
-
-function NginxList()
-{
-        str=`awk -F ',' '{print "{\"{#TAG}\":\""$1"\",\"{#REQSTAT_IP}\":\""$2"\"},"}' $nginxlist |sort -u |sed '/^$/d' |tr -d '\n'`
-        echo -n "{\"data\":[$str]}" |sed 's/,\]/\]/g'
-}
-
-case $1 in
-        applist) AppList;;
-        getstat) getData;;
-        nginxlist) NginxList;;
-        *) exit 1;;
-esac
 ```
 
-# 数据采集
+#### 数据采集器
 
-## 数据采集流程
+##### 数据采集流程
 
 1. 访问/reqstat，获取统计数据
 2. 一段时间后(T秒)，再次访问/reqstat，获取统计数据
 3. 两次获取的数据对应项相减，得到结果 S, 数量相关的用 `S/T`，获取平均每秒的数据，响应时间相关的用 `S/T秒内请求数` 得到每个请求的平均响应时间
 
-## 数据采集脚本
+具体实现中，第一次访问获取的数据保存为 file_start, 第二次访问获取的数据保存为 file_end，然后对2个文件执行 join操作，然后对应列相减，获得需要的数据。
+核心代码是一段awk脚本：
+
+```
+join -t',' $file_start $file_end |\
+awk -F ',' -v host=$host -v interval=$interval -v key="${keymap[*]}" -M '{split(key,arr,/ /)}{
+	for(a=31;a<60;a++){
+		if($1==""){
+			app="UNDEFINED"
+		}else{
+			app=$1
+		}
+		if(arr[a-29]=="rt"){
+			if($(a-6)-$(a-29-6)==0){
+				continue
+			}
+			print host" "arr[a-29]"["app"] "($a-$(a-29))/($(a-6)-$(a-29-6))
+		}else if(arr[a-29]=="ups_rt"){
+			if($(a-1)-$(a-29-1)==0){
+				continue
+			}
+			print host" "arr[a-29]"["app"] "($a-$(a-29))/($(a-1)-$(a-29-1))
+		}else{
+			print host" "arr[a-29]"["app"] "($a-$(a-29))/interval
+		}}}' >$file_push
+```
+
+上面代码干的事情(简化)如图所示：
+
+![](img/join_data.png)
+
+file_push的形式正好是zabbix_sender要求的格式，直接 `zabbix_sender -z $zabbix_server -i file_push` 就可以提交数据。
+
+awk参数中有个 `-M`，这个参数是为了计算大数，需要编译MPFR：
+
+```
+[root@op.ct.114.scloud externalscripts]# awk --version
+GNU Awk 4.1.3, API: 1.1 (GNU MPFR 2.4.1, GNU MP 4.3.1)
+Copyright (C) 1989, 1991-2015 Free Software Foundation.
+```
+
+## grafana配置
+使用grafana作为前端最好的特性是可以在一个screen里看到某个APP多个指标图形，另外一个好处是可以看到每个点的数据值。
+
+![](img/grafana.png)
+
+## 附录
+
+### 模板trigger示例
+可以使用trigger发现出现5xx错误或者请求量异常突增突降的APP。例如下面的trigger表示最近一个qps如果是上2个的3倍以上，并且qps大于20（APP有流量），则认为这个APP请求量突增。
+
+```
+{TEMPLATE:req_total[{#APP_NAME}].last()}/({TEMPLATE:req_total[{#APP_NAME}].last(#3)}+1)>3 and {TEMPLATE:req_total[{#APP_NAME}].last()} > 20
+```
+
+### reqstat.sh完整代码
 
 ```
 zabbix_server="monitor.app.cn"
@@ -128,7 +219,7 @@ extdir=$(cd `dirname $0`;pwd)
 basedir="$extdir/$datadir"
 [ ! -d $basedir ] && mkdir $basedir
 nginxlist="$basedir/$2"
-reqstat=":8000/reqstat"
+reqstat=":9009/reqstat"
 
 tmpdir="$basedir/tmp"
 [ ! -d $tmpdir ] && mkdir $tmpdir
@@ -242,11 +333,43 @@ function getData()
 
 }
 
+function AppList()
+{
+	applist=""
+	for ip in `cut -f2 -d',' $nginxlist`;do
+		applist="$applist `curl -s "http://$ip$reqstat" |grep -v "^<" |cut -f1 -d','`"
+	done
+
+	str=""
+	for id in `echo $applist |tr ' ' '\n' |sort -u`;do
+		str="$str{\"{#APP_NAME}\":\"$id\"},"
+	done
+	undefine='{"{#APP_NAME}":"UNDEFINED"}'
+	echo -n "{\"data\":[$str$undefine]}"
+}
+
+function NginxList()
+{
+	str=`awk -F ',' '{print "{\"{#TAG}\":\""$1"\",\"{#REQSTAT_IP}\":\""$2"\"},"}' $nginxlist |sort -u |sed '/^$/d' |tr -d '\n'`
+	echo -n "{\"data\":[$str]}" |sed 's/,\]/\]/g'
+}
+
+case $1 in
+	applist) AppList;;
+	getstat) getData;;
+	nginxlist) NginxList;;
+	*) exit 1;;
+esac
 ```
 
+### 待解决问题
 
-# zabbix配置
+* 由于监控项众多，每台Tengine为每个app生成了20多个监控项，一共100多个app，8台Tengine有近2万的监控项。由于每个集群部署的app不同，如果不区分集群用同一套模板的item prototype来生成item，则item数量会更多（有相当多是无效的）。因此有必要区分集群来使用不同的模板。但这又带来维护上的问题，新增集群需要手动去配置（复制一个新模板，新增一个监控控制器LLD）。最好有一种更加易于维护的方式。
 
-# grafana配置
+## 参考资料
 
-# 报表数据搜集
+```
+[1]. http://tengine.taobao.org/document_cn/http_reqstat_cn.html
+[2]. https://github.com/alexanderzobnin/grafana-zabbix/
+[3]. https://www.zabbix.com/documentation/3.0/
+```

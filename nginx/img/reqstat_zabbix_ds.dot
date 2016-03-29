@@ -1,0 +1,24 @@
+digraph zabbix_ds {
+	rankdir=LR;
+	fontname = "SimSun";
+	node [shape=Mrecord,fontname="SimSun"];
+	edge [fontname="SimSun"];
+	
+	subgraph cluster_tengine {
+		bgcolor="mintcream";
+		ip [label="Tengine IP"];
+		app [label="APP upstream名称"];
+		key [label=" reqstat监控项"];
+	}
+	
+	subgraph cluster_zabbix {
+		bgcolor="mintcream";
+		host [label="Zabbix Host"];
+		application [label="Zabbix Application"];
+		item [label="Zabbix item\n key[app_name]"];
+	}
+	
+	ip -> host;
+	app -> application;
+	key -> item;
+}

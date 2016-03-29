@@ -1,0 +1,18 @@
+digraph upstream_app {
+	rankdir=TB;
+	node [shape=record];
+	
+	subgraph cluster_1 {
+		label = "Cluster 1"
+		tengine11,tengine12,tengine13 -> upstream_app11,upstream_app12,upstream_app13;
+	}
+	
+	
+	subgraph cluster_2 {
+		label = "Cluster 2"
+		tengine21,tengine22,tengine23 -> upstream_app21,upstream_app22,upstream_app23;
+	}
+	domain1 -> tengine11,tengine12,tengine13;
+	domain2 -> tengine21,tengine22,tengine23;
+
+}

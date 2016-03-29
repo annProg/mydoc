@@ -1,0 +1,25 @@
+digraph join_data {
+	node[shape=note, fontname="Simsun"];
+	edge[fontname="Simsun"];
+	
+	start[label="file_start\napp1,req_total,http_5xx,rt\napp2,req_total,http_5xx,rt"];
+	end[label="file_start\napp1,req_total,http_5xx,rt\napp2,req_total,http_5xx,rt"];
+	
+	middle[label="middle data\napp1,req_total,http_5xx,rt,req_total,http_5xx,rt\napp2,req_total,http_5xx,rt,req_total,http_5xx,rt"];
+	
+	start,end -> middle [label="join -t','"];
+	
+	file_push[label=<
+		<table border="0" cellborder="0" align="left">
+			<tr><td>file_push</td></tr>
+			<tr><td align="left">TAG_10.0.0.1 req_total[app1] 4</td></tr>
+			<tr><td align="left">TAG_10.0.0.1 http_5xx[app1] 4</td></tr>
+			<tr><td align="left">TAG_10.0.0.1 rt[app1] 4</td></tr>
+			<tr><td align="left">TAG_10.0.0.1 req_total[app2] 4</td></tr>
+			<tr><td align="left">TAG_10.0.0.1 http_5xx[app2] 4</td></tr>
+			<tr><td align="left">TAG_10.0.0.1 rt[app2] 4</td></tr>
+		</table>
+	>];
+	
+	middle -> file_push [label="awk对应列相减"]
+}

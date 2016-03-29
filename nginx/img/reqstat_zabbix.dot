@@ -1,0 +1,60 @@
+digraph zabbix {
+	fontname = "SimSun";
+	node [shape=Mrecord,fontname="SimSun"];
+	edge [fontname="SimSun"];
+	
+	extscript [shape="plaintext", label=<
+		<table border="0" cellborder="1" cellspacing="0" align="left">
+			<tr><td bgcolor="lightcyan">externalscripts</td></tr>
+			<tr><td port="nginx">reqstat.sh[nginxlist,nginx.list]</td></tr>
+			<tr><td port="getstat">reqstat.sh[getstat,nginx.list]</td></tr>
+			<tr><td port="applist">reqstat.sh[applist,nginx.list]</td></tr>
+		</table>
+	>];
+	
+	subgraph cluster_lld {
+		label="监控控制器(基于LLD)";
+		style="filled";
+		bgcolor="mintcream";
+		
+		list [shape="plaintext", label=<
+			<table border="0" cellborder="1" cellspacing="0" align="left">
+				<tr><td bgcolor="lightcyan">Tengine列表生成器</td></tr>
+				<tr><td port="host">主机原型<br />({#TAG}_{#REQSTAT_IP})</td></tr>
+			</table>
+		>];
+		
+		getstat [shape="plaintext", label=<
+			<table border="0" cellborder="1" cellspacing="0" align="left">
+				<tr><td bgcolor="lightcyan">数据采集器</td></tr>
+				<tr><td port="sender">返回空json<br />仅做定时任务</td></tr>
+			</table>
+		>];
+	}
+	
+	extscript:nginx -> list [arrowhead=invodot, label="KEY"];
+	extscript:getstat -> getstat [arrowhead=invodot, label="KEY"];
+	
+	template [shape="plaintext", label=<
+		<table border="0" cellborder="1" cellspacing="0" align="left">
+			<tr><td bgcolor="lightcyan">模板(基于LLD)</td></tr>
+			<tr><td port="applist">获取APP列表</td></tr>
+			<tr><td port="application">application prototypes<br/>(使用{#APP_NAME})</td></tr>
+			<tr><td port="item">item prototypes<br/>(req_total-{#APP_NAME}等)</td></tr>
+			<tr><td port="graph">graph prototypes</td></tr>
+			<tr><td port="trigger">trigger prototypes</td></tr>
+		</table>
+	>];
+	
+	extscript:applist -> template:applist [arrowhead=invodot, label="KEY"];
+	host [label="TAG_10.0.0.1", color="chartreuse2", style="filled"];
+
+	list:host -> template [label="链接", color="red"];
+	list:host:w -> host[label="生成"];
+	
+	template -> host [label="链接", style="dashed"];
+	
+	getstat:sender:w -> host [headlabel="zabbix_sender", labeldistance=15];
+	
+
+}
