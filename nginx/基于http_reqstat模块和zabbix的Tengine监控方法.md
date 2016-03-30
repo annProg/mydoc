@@ -6,7 +6,7 @@ Tengine的http_reqstat_module提供了监控Tengine运行状态的方法，能�
 ## Tengine reqstat数据形式
 
 ### 业务结构
-reqsat能根据不同的变量来统计Tengine状态，因此首先要根据业务需求确定需要统计的项目。本文接触的业务分属于不同的集群，每个集群使用多台Tengine做反向代理，每个APP有自己独享的upstream，有一个或多个Location，但不一定使用相同的域名。
+reqsat能根据不同的Nginx变量来统计状态信息（例如统计每个域名，或者统计每个URI），因此首先要根据业务需求确定需要统计的变量。本文接触的业务分属于不同的集群，每个集群使用多台Tengine做反向代理，每个APP有自己独享的upstream，有一个或多个Location，但不一定使用相同的域名。
 
 ![](img/reqstat_apparch.png)
 
@@ -19,7 +19,7 @@ http {
 	req_status app;
 	
 	server {
-		listen 8000;
+		listen 9009;
 		location /reqstat {
 			req_status_show;
 			allow 10.0.0.0/8;
@@ -364,7 +364,7 @@ esac
 
 ### 待解决问题
 
-* 由于监控项众多，每台Tengine为每个app生成了20多个监控项，一共100多个app，8台Tengine有近2万的监控项。由于每个集群部署的app不同，如果不区分集群用同一套模板的item prototype来生成item，则item数量会更多（有相当多是无效的）。因此有必要区分集群来使用不同的模板。但这又带来维护上的问题，新增集群需要手动去配置（复制一个新模板，新增一个监控控制器LLD）。最好有一种更加易于维护的方式。
+* 由于监控项众多，每台Tengine为每个app生成了20多个监控项，一共100多个app，8台Tengine有近2万的监控项。另外每个集群部署的app不同，如果不区分集群用同一套模板的item prototype来生成item，则item数量会更多（有相当多是无效的）。因此有必要区分集群来使用不同的模板。但这又带来维护上的问题，新增集群需要手动去配置（复制一个新模板，新增一个监控控制器LLD）。最好有一种更加易于维护的方式。
 
 ## 参考资料
 
