@@ -83,7 +83,7 @@ httpups5xx upstream返回5xx响应的请求总数
 
 ![](img/reqstat_zabbix_ds.png)
 
-本文使用zabbix的 host prototype和application prototype功能，可以使用LLD自动生成主机，item prototype里可以设置item所属的application prototype。因此可以实现上图中 `APP upstream名称` 和 `zabbix application` 的对应关系。
+本文使用zabbix LLD的host prototype功能自动生成主机，zabbix 3之后有了application prototype功能，这样item prototype里可以设置item所属的application prototype。因此可以实现上图中 `APP upstream名称` 和 `zabbix application` 的对应关系。
 
 ### 监控项单位
 监控的项目大致分为3类：
@@ -96,10 +96,12 @@ httpups5xx upstream返回5xx响应的请求总数
 
 监控的大致流程为：
 
-1. 列表生成器LLD获取包含集群TAG的Tengine IP列表
-2. 基于列表生成器LLD的host prototype创建有{$CLUSTER.TYPE}宏变量的HOST，并链接模板
-3. 模板LLD获取包含TAG的APP LIST，获得item prototype，application prototype需要的宏
-4. HOST链接模板，应用LLD Filter（APP TAG匹配HOST的{$CLUSTER.TYPE}），得到属于自己的item并创建item，application等
+1. 新建模板，添加LLD用于获取包含TAG的APP_NAME列表，并设置Filter：{#TAG} match {$CLUSTER.TYPE}
+1. 新建一个HOST作为列表生成器，并设置主机宏：{$CLUSTER.TYPE} => TAG
+2. 为列表生成器添加LLD，用于获取包含TAG的Tengine IP列表，并设置Filter：{#TAG} match {$CLUSTER.TYPE}
+3. 为列表生成器添加Host Prototype，使用 {#TAG}_{#REQSTAT_IP}作为NAME
+2. 基于步骤3、4， 一个列表生成器的Host Prototype只取TAG和主机宏设置的TAG相同的Tengine IP生成HOST并链接模板，新生成的HOST会继承列表生成器的宏变量{$CLUSTER.TYPE}。**因此有多个集群需要监控时，需要建立多个列表生成器**
+4. HOST链接模板，基于步骤1、5，当HOST的{$CLUSTER.TYPE}和模板LLD返回的APP_NAME的TAG一致时，才会使用此APP_NAME创建item，application等
 5. 数据采集LLD发送数据到zabbix
 
 如图所示：
@@ -108,18 +110,26 @@ httpups5xx upstream返回5xx响应的请求总数
 
 ## 监控实现
 
-本文需要建立一个zabbix模板，并实现监控控制器脚本（即上节图中 reqstat.sh）。
+本文需要建立一个zabbix模板，添加列表生成器主机和采集器主机，并实现相关控制脚本（即上节图中 reqstat.sh）。
 
-### zabbix模板
-需要注意以下几点：
+### zabbix设置
 
-* 模板获取APP列表的LLD需要有一个Filter，用于过滤属于HOST的item
-* item prototype中key的Type为 Zabbix Trapper，数据类型均为 Numberic(float)
-* Application prototype使用宏 {#APP_NAME}。
+根据上节图形及描述，以集群名称CN为例，zabbix配置步骤如下：
 
-![](img/template.png)
+1. 准备nginx ip列表文件: nginx.list
+1. 新建模板 Tengine_reqstat
+2. 为模板添加LLD: app列表，设置key: reqstat.sh[applist], 并添加Filter: {#TAG} match {$CLUSTER.TYPE}
+3. 为模板LLD添加item prototypes，以{#APP_NAME}为参数，例如 http_200[{#APP_NAME}]。数据类型为 Numberic(float)，Application Prototype使用宏{#APP_NAME}
+4. 模板LLD中按需添加Graph Prototypes和Trigger Prototypes
+3. 新建列表生成器HOST，设置主机宏: {$CLUSTER.TYPE} => CN
+4. 为列表生成器添加LLD，设置key: reqstat.sh[nginxlist], 并添加Filter: {#TAG} match {$CLUSTER.TYPE}
+5. 为列表生成器LLD添加Host Prototype，NAME为 {#TAG}_{#REQSTAT_IP}， 并链接模板 Tengine_reqstat
+6. 新建采集器HOST，添加LLD，设置key: reqstat.sh[getstat]
+7. 如果集群新增机器，编辑nginx.list，添加新机器
+8. 如果新增集群，编辑nginx.list，添加新集群IP，并重复步骤 6,7,8（可以通过Clone Host简化）
 
-### 监控控制器脚本
+
+### 监控脚本
 
 #### Tengine列表
 列表文件格式为 TAG,IP形式，TAG主要用来标记集群名称。

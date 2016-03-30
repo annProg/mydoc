@@ -3,6 +3,7 @@ digraph zabbix {
 	node [shape=Mrecord,fontname="MONACO,Courier New,SimSun"];
 	edge [fontname="Courier New,SimSun"];
 	
+	nginxlist [fontsize=11, shape="note", label="Nginx List\nCN,10.0.0.1\nCN,10.0.0.2\nUS,10.1.0.1\nUS,10.1.0.2"];
 	extscript [fontsize=11, shape="note", label=<
 		<table border="0" cellborder="0" cellspacing="0" align="left">
 			<tr><td align="left" bgcolor="lightcyan">externalscripts</td></tr>
@@ -10,37 +11,37 @@ digraph zabbix {
 			<tr><td align="left" port="applist">reqstat.sh[applist]  ({{#TAG}:tag, {#APP_NAME}:appname})</td></tr>
 			<tr><td align="left" port="getstat">reqstat.sh[getstat]  ({"data":[]})</td></tr>
 
-		</table>
-	>];
-		
-	subgraph cluster_lld {
-		label="控制器(A Zabbix Host)";
+  		</table>
+  	>];
+	
+	subgraph cluster_listgen{
+		label="Tengine列表生成器";
 		style="filled";
 		bgcolor="mintcream";
-		
-		zbxhost [shape=record, label="<lld1>LLD1|<lld2>LLD2|<micro>Micro:\n \{$CLUSTER.TYPE\} = \{#TAG\} "];
-		list [shape="plaintext", label=<
+		gen_cn [shape="plaintext", label=<
 			<table border="0" cellborder="1" cellspacing="0" align="left">
-				<tr><td bgcolor="lightcyan">Tengine列表生成器</td></tr>
-				<tr><td port="host">Host Prototype:<br />{#TAG}_{#REQSTAT_IP}</td></tr>
+				<tr><td bgcolor="lightcyan">List Gen_cn(A Zabbix Host)</td></tr>
+				<tr><td><b>Micro: {$CLUSTER.TYPE} =&gt; CN</b></td></tr>
+				<tr><td>LLD: Filter: {#TAG} match {$CLUSTER.TYPE}</td></tr>
+				<tr><td port="host">Host Prototype: {#TAG}_{#REQSTAT_IP}</td></tr>
 			</table>
 		>];
+		gen_xxx [shape=note,label="Gen_xx"];
 		
-		getstat [shape="plaintext", label=<
-			<table border="0" cellborder="1" cellspacing="0" align="left">
-				<tr><td bgcolor="lightcyan">数据采集器</td></tr>
-				<tr><td port="sender">返回空json<br />仅做定时任务</td></tr>
-			</table>
-		>];
-		
-		zbxhost:lld1 -> getstat[style="bold"];
-		zbxhost:lld2 -> list;
-		zbxhost:micro -> list:host:e [style="dashed", taillabel=" 继承"];
 	}
 	
-	extscript:nginx -> zbxhost:lld2 [arrowhead=invodot, label="KEY", style="dashed"];
-	extscript:getstat:w -> zbxhost:lld1 [arrowhead=invodot, label="KEY", style="bold"];
+	extscript:nginx -> gen_cn [arrowhead=invodot];
+	gen_cn:host:w -> template[label="Linked", color="red"];
 	
+	sender [shape="plaintext", label=<
+		<table border="0" cellborder="1" cellspacing="0" align="left">
+			<tr><td bgcolor="lightcyan">数据采集器</td></tr>
+			<tr><td port="sender">返回空json<br />仅做定时任务</td></tr>
+		</table>
+	>];
+
+	extscript:getstat:w -> sender [arrowhead=invodot];
+
 	template [shape="plaintext", label=<
 		<table border="0" cellborder="1" cellspacing="0" align="left">
 			<tr><td bgcolor="lightcyan">模板</td></tr>
@@ -52,13 +53,13 @@ digraph zabbix {
 		</table>
 	>];
 	
-	extscript:applist -> template:applist [arrowhead=invodot, label="KEY", style="dashed"];
-	host [label="TAG_10.0.0.1", color="chartreuse2", style="filled"];
-
-	list:host -> template [label="链接", color="red"];
-	list:host -> host[label="生成"];
+	extscript:applist -> template:applist[arrowhead=invodot];
 	
-	template -> host [label="链接", style="dashed"];
+	host_cn[shape=note,label="CN_10.0.0.1\nMicro: {$CLUSTER.TYPE} => CN"];	
+	gen_cn ->host_cn[label=" 生成", style="bold"];
+	sender:sender -> host_cn[label="zabbix_sender"];
 	
-	getstat:sender -> host [taillabel="zabbix_sender", style="bold"];
+	template -> host_cn[style="dashed", color="red", label="Linked"];
+	
+	
 }
