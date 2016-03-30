@@ -83,7 +83,7 @@ httpups5xx upstream返回5xx响应的请求总数
 
 ![](img/reqstat_zabbix_ds.png)
 
-本文使用的zabbix版本为3.0，该版本有 host prototype和application prototype功能，可以使用LLD自动生成主机，item prototype里可以设置item所属的application prototype。因此可以实现上图中 `APP upstream名称` 和 `zabbix application` 的对应关系。
+本文使用zabbix的 host prototype和application prototype功能，可以使用LLD自动生成主机，item prototype里可以设置item所属的application prototype。因此可以实现上图中 `APP upstream名称` 和 `zabbix application` 的对应关系。
 
 ### 监控项单位
 监控的项目大致分为3类：
@@ -93,12 +93,13 @@ httpups5xx upstream返回5xx响应的请求总数
 * byte 流量，存储单位 B/秒
 
 ### 监控结构图
+
 监控的大致流程为：
 
-1. 列表生成器LLD获取Tengine IP列表，需要包含Tengine的集群标签（不同集群需要链接不同的模板）
-2. 基于列表生成器LLD的host prototype创建HOST，并链接模板
-3. 模板LLD获取APP LIST，获得item prototype，application prototype需要的宏
-4. HOST基于模板prototype创建item，application等
+1. 列表生成器LLD获取包含集群TAG的Tengine IP列表
+2. 基于列表生成器LLD的host prototype创建有{$CLUSTER.TYPE}宏变量的HOST，并链接模板
+3. 模板LLD获取包含TAG的APP LIST，获得item prototype，application prototype需要的宏
+4. HOST链接模板，应用LLD Filter（APP TAG匹配HOST的{$CLUSTER.TYPE}），得到属于自己的item并创建item，application等
 5. 数据采集LLD发送数据到zabbix
 
 如图所示：
@@ -110,8 +111,11 @@ httpups5xx upstream返回5xx响应的请求总数
 本文需要建立一个zabbix模板，并实现监控控制器脚本（即上节图中 reqstat.sh）。
 
 ### zabbix模板
+需要注意以下几点：
 
-需要注意item prototype中key的Type为 Zabbix Trapper，数据类型均为 Numberic(float)，Application prototype使用宏 {#APP_NAME}。
+* 模板获取APP列表的LLD需要有一个Filter，用于过滤属于HOST的item
+* item prototype中key的Type为 Zabbix Trapper，数据类型均为 Numberic(float)
+* Application prototype使用宏 {#APP_NAME}。
 
 ![](img/template.png)
 
@@ -129,6 +133,7 @@ function NginxList()
 ```
 
 #### app列表
+获取带有TAG的APP列表：
 
 ```
 function AppList()
@@ -144,6 +149,25 @@ function AppList()
         done
         undefine='{"{#APP_NAME}":"UNDEFINED"}'
         echo -n "{\"data\":[$str$undefine]}"
+}
+
+function AppList()
+{
+	applist=""
+	for item in ${nginxlist[@]};do
+		ip=`echo $item |cut -f2 -d','`
+		tag=`echo $item |cut -f1 -d','`
+		applist="$applist `curl -s "http://$ip$reqstat" |grep -v "^<" |awk -v t=$tag -F ',' '{print t","$1}'`"
+	done
+
+	str=""
+	for id in `echo $applist |tr ' ' '\n' |sort -u`;do
+		appname=`echo $id |cut -f2 -d','`
+		[ "$appname"x == ""x ] && appname=UNDEFINED
+		tag=`echo $id |cut -f1 -d','`
+		str="$str{\"{#APP_NAME}\":\"$appname\",\"{#TAG}\":\"$tag\"},"
+	done
+	echo -n "{\"data\":[$str]}" |sed 's/\},\]\}/\}\]\}/g'
 }
 ```
 
@@ -361,10 +385,6 @@ case $1 in
 	*) exit 1;;
 esac
 ```
-
-### 待解决问题
-
-* 由于监控项众多，每台Tengine为每个app生成了20多个监控项，一共100多个app，8台Tengine有近2万的监控项。另外每个集群部署的app不同，如果不区分集群用同一套模板的item prototype来生成item，则item数量会更多（有相当多是无效的）。因此有必要区分集群来使用不同的模板。但这又带来维护上的问题，新增集群需要手动去配置（复制一个新模板，新增一个监控控制器LLD）。最好有一种更加易于维护的方式。
 
 ## 参考资料
 
