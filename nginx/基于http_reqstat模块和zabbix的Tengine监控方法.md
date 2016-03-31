@@ -148,27 +148,12 @@ function NginxList()
 ```
 function AppList()
 {
-        applist=""
-        for ip in `cut -f2 -d',' $nginxlist`;do
-                applist="$applist `curl -s "http://$ip$reqstat" |grep -v "^<" |cut -f1 -d','`"
-        done
-
-        str=""
-        for id in `echo $applist |tr ' ' '\n' |sort -u`;do
-                str="$str{\"{#APP_NAME}\":\"$id\"},"
-        done
-        undefine='{"{#APP_NAME}":"UNDEFINED"}'
-        echo -n "{\"data\":[$str$undefine]}"
-}
-
-function AppList()
-{
 	applist=""
-	for item in ${nginxlist[@]};do
+	while read item;do
 		ip=`echo $item |cut -f2 -d','`
 		tag=`echo $item |cut -f1 -d','`
 		applist="$applist `curl -s "http://$ip$reqstat" |grep -v "^<" |awk -v t=$tag -F ',' '{print t","$1}'`"
-	done
+	done <$nginxlist
 
 	str=""
 	for id in `echo $applist |tr ' ' '\n' |sort -u`;do
@@ -247,12 +232,18 @@ Copyright (C) 1989, 1991-2015 Free Software Foundation.
 ### reqstat.sh完整代码
 
 ```
-zabbix_server="monitor.app.cn"
+#!/bin/bash
+
+zabbix_server="monit.app.cn"
 datadir="data_tengine_reqstat"
 extdir=$(cd `dirname $0`;pwd)
 basedir="$extdir/$datadir"
 [ ! -d $basedir ] && mkdir $basedir
-nginxlist="$basedir/$2"
+if [ $# -eq 2 ];then
+	nginxlist="$basedir/$2"
+else
+	nginxlist="$basedir/nginx.list"
+fi
 reqstat=":9009/reqstat"
 
 tmpdir="$basedir/tmp"
@@ -300,10 +291,12 @@ function getData()
 		tag=`echo $line | cut -f1 -d','`
 		ip=`echo $line | cut -f2 -d','`
 		log="$tmpdir/push.$ip.log"
+		tmpfile="$tmpdir/join.$ip.tmp"
 		file_start="$tmpdir/$ip.start"
 		file_end="$tmpdir/$ip.end"
 		file_push="$tmpdir/$ip.push"
 		timedate=`date +%Y%m%d%H%M%S`
+		logvar=$timedate
 		
 		host="${tag}_${hostkey}_${ip}"
 		
@@ -312,6 +305,7 @@ function getData()
 		nowtime=`date +%s`
 		value=`echo "$modtime $nowtime" |awk '{print $2-$1}'`
 		[ $value -gt 90 ] && rm -f $file_start
+		logvar="$logvar \"$value\""
 		
 		if [ ! -f $file_start ];then
 			curl -s "http://$ip$reqstat" |sort -k1 -t',' >$file_start
@@ -324,11 +318,12 @@ function getData()
 		start_time=`stat -c %Y $file_start`
 		end_time=`stat -c %Y $file_end`
 		interval=`echo "$start_time $end_time" | awk '{print $2-$1}'`
+		logvar="$logvar \"$interval\""
 		[ $interval -eq 0 ] && continue
 		
 		# ($a-$(a-29)+interval-1)/interval  (A+B-1)/B 向上取整, (已废弃，使用浮点数)
 		# 当错误数小于interval时，计算结果为0，故向上取整，使其值至少为1，以便于反映问题
-		join -t',' $file_start $file_end |\
+		join -t',' $file_start $file_end 2>$tmpfile |\
 		awk -F ',' -v host=$host -v interval=$interval -v key="${keymap[*]}" -M '{split(key,arr,/ /)}{
 			for(a=31;a<60;a++){
 				if($1==""){
@@ -349,19 +344,22 @@ function getData()
 				}else{
 					print host" "arr[a-29]"["app"] "($a-$(a-29))/interval
 				}}}' >$file_push
+		joinlog=`cat $tmpfile`
+		[ "$joinlog"x == ""x ] && joinlog="join SUCC"
+		logvar="$logvar \"$joinlog\""
+
 		if [ $(id -u) != 0 ];then
-			logtime=`date +%Y%m%d%H%M%S`
-			echo $logtime >>$log
+			echo "==========================================================" >>$log
+			echo $logvar >>$log
 			zabbix_sender -z $zabbix_server -i $file_push &>>$log
-			echo "$interval" >>$log
 			cp -f $file_end $file_start
 		else
-			echo "$value $interval"
+			echo "$logvar"
 		fi
 		#mv $file_start $file_start.$timedate
 		#mv $file_end $file_end.$timedate
-	} &
-	done <$nginxlist
+
+	} done <$nginxlist
 	wait
 	echo '{"data":[]}'
 
@@ -370,16 +368,20 @@ function getData()
 function AppList()
 {
 	applist=""
-	for ip in `cut -f2 -d',' $nginxlist`;do
-		applist="$applist `curl -s "http://$ip$reqstat" |grep -v "^<" |cut -f1 -d','`"
-	done
+	while read item;do
+		ip=`echo $item |cut -f2 -d','`
+		tag=`echo $item |cut -f1 -d','`
+		applist="$applist `curl -s "http://$ip$reqstat" |grep -v "^<" |awk -v t=$tag -F ',' '{print t","$1}'`"
+	done <$nginxlist
 
 	str=""
 	for id in `echo $applist |tr ' ' '\n' |sort -u`;do
-		str="$str{\"{#APP_NAME}\":\"$id\"},"
+		appname=`echo $id |cut -f2 -d','`
+		[ "$appname"x == ""x ] && appname=UNDEFINED
+		tag=`echo $id |cut -f1 -d','`
+		str="$str{\"{#APP_NAME}\":\"$appname\",\"{#TAG}\":\"$tag\"},"
 	done
-	undefine='{"{#APP_NAME}":"UNDEFINED"}'
-	echo -n "{\"data\":[$str$undefine]}"
+	echo -n "{\"data\":[$str]}" |sed 's/\},\]\}/\}\]\}/g'
 }
 
 function NginxList()
@@ -392,6 +394,7 @@ case $1 in
 	applist) AppList;;
 	getstat) getData;;
 	nginxlist) NginxList;;
+	null) echo '{"data":[]}';;
 	*) exit 1;;
 esac
 ```
