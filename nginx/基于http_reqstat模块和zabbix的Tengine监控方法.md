@@ -399,6 +399,14 @@ case $1 in
 esac
 ```
 
+### 使用crontab做数据采集器
+除了LLD方式，也可以使用Linux crontab来实现采集器。添加2条crontab，第一条0s执行，第二条30s执行，这样就实现了每30s执行采集一次数据。
+
+```
+* * * * * zabbix /opt/zabbix/share/zabbix/externalscripts/tengine_reqstat.sh getstat
+* * * * * zabbix sleep 30;/opt/zabbix/share/zabbix/externalscripts/tengine_reqstat.sh getstat
+```
+
 ## 参考资料
 
 ```
