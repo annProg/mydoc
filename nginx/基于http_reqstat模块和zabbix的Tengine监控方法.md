@@ -400,7 +400,7 @@ esac
 ```
 
 ### 使用crontab做数据采集器
-除了LLD方式，也可以使用Linux crontab来实现采集器。添加2条crontab，第一条0s执行，第二条30s执行，这样就实现了每30s执行采集一次数据。
+除了LLD方式，也可以使用Linux crontab来实现采集器。添加2条crontab，第一条0s执行，第二条30s执行，这样就实现了每30s执行采集一次数据。实践发现这种方式更好，基本不会出现断图的情况（LLD方式偶尔断图）。
 
 ```
 * * * * * zabbix /opt/zabbix/share/zabbix/externalscripts/tengine_reqstat.sh getstat
