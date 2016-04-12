@@ -187,16 +187,19 @@ awk -F ',' -v host=$host -v interval=$interval -v key="${keymap[*]}" -M '{split(
 			app=$1
 		}
 		if(arr[a-29]=="rt"){
-			if($(a-6)-$(a-29-6)==0){
+			if($(a-6)-$(a-29-6)<=0){
 				continue
 			}
 			print host" "arr[a-29]"["app"] "($a-$(a-29))/($(a-6)-$(a-29-6))
 		}else if(arr[a-29]=="ups_rt"){
-			if($(a-1)-$(a-29-1)==0){
+			if($(a-1)-$(a-29-1)<=0){
 				continue
 			}
 			print host" "arr[a-29]"["app"] "($a-$(a-29))/($(a-1)-$(a-29-1))
 		}else{
+			if($a-$(a-29)<0){
+				continue
+			}
 			print host" "arr[a-29]"["app"] "($a-$(a-29))/interval
 		}}}' >$file_push
 ```
@@ -332,16 +335,19 @@ function getData()
 					app=$1
 				}
 				if(arr[a-29]=="rt"){
-					if($(a-6)-$(a-29-6)==0){
+					if($(a-6)-$(a-29-6)<=0){
 						continue
 					}
 					print host" "arr[a-29]"["app"] "($a-$(a-29))/($(a-6)-$(a-29-6))
 				}else if(arr[a-29]=="ups_rt"){
-					if($(a-1)-$(a-29-1)==0){
+					if($(a-1)-$(a-29-1)<=0){
 						continue
 					}
 					print host" "arr[a-29]"["app"] "($a-$(a-29))/($(a-1)-$(a-29-1))
 				}else{
+					if($a-$(a-29)<0){
+						continue
+					}
 					print host" "arr[a-29]"["app"] "($a-$(a-29))/interval
 				}}}' >$file_push
 		joinlog=`cat $tmpfile`
