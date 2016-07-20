@@ -217,7 +217,7 @@ if(preg_match('/^\/toolkit\//i', $_SERVER['REQUEST_URI']) or preg_match('/^\/set
 }
 if(!isset($_SESSION['auth_user']) && !$isToolPage)
 {
-	UserLeSSO::getM_TK($_SERVER['REQUEST_URI']);
+	UserLeSSO::getM_TK(base64_encode($_SERVER['REQUEST_URI']));
 }
 ```
 
@@ -246,7 +246,7 @@ $appRootUrl = UserLeSSO::getAppRootUrl(false);
 
 if(UserRights::CheckCredentials(SSOUSER,'') === true)
 {
-	$location = $appRootUrl . $_GET['uri'];
+	$location = $appRootUrl . base64_decode($_GET['uri']);
 	header("Location: $location");
 }
 ```
