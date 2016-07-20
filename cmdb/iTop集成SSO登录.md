@@ -207,10 +207,15 @@ static private function getM_TK()
 ## 优化登录
 2016.7.20更新
 
-由于绝大多数用户都通过sso登录，因此决定未认证用户之间重定向至sso以提高用户体验。只需要在model.authent-sso.php中class定义的外面判断是否登录，未登录的跳转去sso。
+由于绝大多数用户都通过sso登录，因此决定未认证用户之间重定向至sso以提高用户体验。只需要在model.authent-sso.php中class定义的外面判断是否登录，未登录的跳转去sso（注意请求uri为toolkit和setup时不要跳转到sso，否则将导致这两个功能不可用）。
 
 ```
-if(!isset($_SESSION['auth_user']))
+//如果访问 toolkit 或者 setup 等工具页面，则不跳转到sso
+$isToolPage = false;
+if(preg_match('/^\/toolkit\//i', $_SERVER['REQUEST_URI']) or preg_match('/^\/setup\//i', $_SERVER['REQUEST_URI'])){
+	$isToolPage = true;
+}
+if(!isset($_SESSION['auth_user']) && !$isToolPage)
 {
 	UserLeSSO::getM_TK($_SERVER['REQUEST_URI']);
 }
