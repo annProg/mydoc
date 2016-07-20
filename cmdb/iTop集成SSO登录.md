@@ -203,3 +203,62 @@ static private function getM_TK()
 ```
 'UI:Login:IdentifyYourself' => '<a href="https://sso/login.php?next=http://cmdb/env-production/authent-sso/login.php"><span style="color:red;font-size:18px">SSO用户点此登录</font></a>',
 ```
+
+## 优化登录
+2016.7.20更新
+
+由于绝大多数用户都通过sso登录，因此决定未认证用户之间重定向至sso以提高用户体验。只需要在model.authent-sso.php中class定义的外面判断是否登录，未登录的跳转去sso。
+
+```
+if(!isset($_SESSION['auth_user']))
+{
+	UserLeSSO::getM_TK($_SERVER['REQUEST_URI']);
+}
+```
+
+其中参数 `$_SERVER['REQUEST_URI']` 用于认证通过后重定向至登录前的链接。具体流程为记录用户登录前打开的`request_uri`, 作为url参数加到sso的next URL里，然后login.php就可以获取到这个uri，认证成功后直接重定向至该request_uri。
+
+`getM_TK()`函数修改为：
+
+```
+static public function getM_TK($uri="")
+{
+	$sAppRootUrl = trim(MetaModel::GetConfig()->Get('app_root_url'));
+	$loginPage = "env-production/authent-sso/login.php";
+	$sLoginURL = trim(MetaModel::GetModuleSetting('authent-sso', 'login_url', 'http://localhost'));
+	$next = $sAppRootUrl . $loginPage . "?uri=" . $uri;
+	
+	header("Location: ". $sLoginURL . "?next=" . $next);
+}
+```
+
+接下来在login中处理
+
+```
+$appRootUrl = UserLeSSO::getAppRootUrl(false);
+....
+....
+
+if(UserRights::CheckCredentials(SSOUSER,'') === true)
+{
+	$location = $appRootUrl . $_GET['uri'];
+	header("Location: $location");
+}
+```
+
+为了取到不带URI的app_root_url，`getAppRootUrl()`函数修改为：
+
+```
+static public function getAppRootUrl($with_uri=true)
+{
+	if($with_uri)
+	{
+		return trim(MetaModel::GetConfig()->Get('app_root_url')) . "pages/UI.php";
+	}
+	else
+	{
+		$root_url = trim(MetaModel::GetConfig()->Get('app_root_url'));
+		return preg_replace("/\/$/","",$root_url);
+	}
+}
+```
