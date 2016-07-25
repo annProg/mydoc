@@ -6,6 +6,7 @@ iTop版本2.2.1，默认状态下导出PDF中文字符会显示为方框。解�
 2. 标题正常显示中文：`sed -i 's/dejavusans/droidsansfallback/g' application/pdfpage.class.inc.php`
 3. impact图正常显示中文：`sed -i 's/dejavusans/droidsansfallback/g' core/displayablegraph.class.inc.php`
 4. 列表中文正常显示: `sed -i 's/dejavusans/droidsansfallback/g' pages/ajax.render.php`
+5. 批量导出PDF格式CI: `sed -i 's/dejavusans/droidsansfallback/g' core/pdfbulkexport.class.inc.php`
 
 ## 参考资料
 ```
