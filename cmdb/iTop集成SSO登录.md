@@ -215,7 +215,7 @@ if(isset($_SERVER['REQUEST_URI']))
 {
 	//如果访问 toolkit 或者 setup 等工具页面，则不跳转到sso
 	$isToolPage = false;
-	if(preg_match('/^\/toolkit\//i',$_SERVER['REQUEST_URI']) or preg_match('/^\/setup\//i', $_SERVER['REQUEST_URI']))
+	if(preg_match('/^\/toolkit\/|^\/webservices\/|^\/setup\//i',$_SERVER['REQUEST_URI']))
 	{
 		$isToolPage = true;
 	}
