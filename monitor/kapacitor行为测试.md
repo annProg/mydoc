@@ -332,3 +332,8 @@ i1=(1 0 0 0 0 1 1 1 1 1 0 1 1)
 }
 ```
 
+## 参考资料
+```
+1. https://docs.influxdata.com/kapacitor/v0.13/
+2. https://groups.google.com/forum/m/#!topic/influxdb/qg9on1deA_8
+```
