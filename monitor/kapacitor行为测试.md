@@ -332,6 +332,153 @@ i1=(1 0 0 0 0 1 1 1 1 1 0 1 1)
 }
 ```
 
+## 使用Fields作为变量
+tickscript：
+
+```
+var win = 5s
+var origin = stream
+    |from()
+        .database('test')
+        .retentionPolicy('default')
+        .measurement('ka')
+        .groupBy('app')
+    |window()
+        .period(win)
+        .every(1s)
+
+origin
+    |alert()
+		.id('HTTP_CODE:{{ index .Tags "app" }}')
+		.message('')
+		.stateChangesOnly()
+		.all()
+		.crit(lambda: "code_match" < "count")
+		.log('/tmp/alerts.log')
+```
+
+测试数据及脚本:
+
+```
+i1=(1 0 0 0 0 1 1 1 1 1 0 1 1)
+
+for id in ${i1[@]};do
+	curl -i -XPOST $influx --data-binary "ka,app=cmdb code_match=$id,http_code=200,count=0.5"
+	sleep 1
+done
+```
+
+结果：
+
+```
+{
+  "data": {
+    "series": [
+      {
+        "values": [
+          [
+            "2016-09-05T06:24:31.532711141Z",
+            0,
+            0.5,
+            200
+          ],
+          [
+            "2016-09-05T06:24:32.621932436Z",
+            0,
+            0.5,
+            200
+          ],
+          [
+            "2016-09-05T06:24:33.64890981Z",
+            0,
+            0.5,
+            200
+          ],
+          [
+            "2016-09-05T06:24:34.686454948Z",
+            0,
+            0.5,
+            200
+          ]
+        ],
+        "columns": [
+          "time",
+          "code_match",
+          "count",
+          "http_code"
+        ],
+        "tags": {
+          "app": "cmdb"
+        },
+        "name": "ka"
+      }
+    ]
+  },
+  "level": "CRITICAL",
+  "duration": 0,
+  "time": "2016-09-05T06:24:35.686454948Z",
+  "details": "{&#34;Name&#34;:&#34;ka&#34;,&#34;TaskName&#34;:&#34;test&#34;,&#34;Group&#34;:&#34;app=cmdb&#34;,&#34;Tags&#34;:{&#34;app&#34;:&#34;cmdb&#34;},&#34;ID&#34;:&#34;HTTP_CODE:cmdb&#34;,&#34;Fields&#34;:{&#34;code_match&#34;:0,&#34;count&#34;:0.5,&#34;http_code&#34;:200},&#34;Level&#34;:&#34;CRITICAL&#34;,&#34;Time&#34;:&#34;2016-09-05T06:24:35.686454948Z&#34;,&#34;Message&#34;:&#34;&#34;}\n",
+  "message": "",
+  "id": "HTTP_CODE:cmdb"
+}
+{
+  "data": {
+    "series": [
+      {
+        "values": [
+          [
+            "2016-09-05T06:24:32.621932436Z",
+            0,
+            0.5,
+            200
+          ],
+          [
+            "2016-09-05T06:24:33.64890981Z",
+            0,
+            0.5,
+            200
+          ],
+          [
+            "2016-09-05T06:24:34.686454948Z",
+            0,
+            0.5,
+            200
+          ],
+          [
+            "2016-09-05T06:24:35.705047313Z",
+            1,
+            0.5,
+            200
+          ]
+        ],
+        "columns": [
+          "time",
+          "code_match",
+          "count",
+          "http_code"
+        ],
+        "tags": {
+          "app": "cmdb"
+        },
+        "name": "ka"
+      }
+    ]
+  },
+  "level": "OK",
+  "duration": 1018592365,
+  "time": "2016-09-05T06:24:36.705047313Z",
+  "details": "{&#34;Name&#34;:&#34;ka&#34;,&#34;TaskName&#34;:&#34;test&#34;,&#34;Group&#34;:&#34;app=cmdb&#34;,&#34;Tags&#34;:{&#34;app&#34;:&#34;cmdb&#34;},&#34;ID&#34;:&#34;HTTP_CODE:cmdb&#34;,&#34;Fields&#34;:{&#34;code_match&#34;:0,&#34;count&#34;:0.5,&#34;http_code&#34;:200},&#34;Level&#34;:&#34;OK&#34;,&#34;Time&#34;:&#34;2016-09-05T06:24:36.705047313Z&#34;,&#34;Message&#34;:&#34;&#34;}\n",
+  "message": "",
+  "id": "HTTP_CODE:cmdb"
+}
+```
+
+结论：
+
+1. 可以实现Fields之间的数值比较
+2. 可以用来自定义不同tags的阈值，例如监控流量异常，可以由用户定义流量增长几倍才算异常
+		
+
 ## 参考资料
 ```
 1. https://docs.influxdata.com/kapacitor/v0.13/
