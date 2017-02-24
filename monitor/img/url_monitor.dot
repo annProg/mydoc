@@ -1,0 +1,47 @@
+digraph url_monitor {
+	rank="same";
+	fontname = "Courier New, SimSun";
+	node [shape=Mrecord,fontname="MONACO,Courier New,SimSun"];
+	edge [fontname="Courier New,SimSun"];
+
+	user[label="User"];
+	
+	subgraph cluster_collect {
+		rank="same";
+		style="filled";
+		bgcolor="mintcream";
+		cmdb[label="iTop-CMDB\n用户前端"];
+		gitlab[label="GitLab\n配置存储"];
+		telegraf[label="Telegraf\n运行监控"];
+		influxdb[label="InfluxDB\n存储监控数据"];
+		cmdb->gitlab[label="①"];
+		gitlab->telegraf[label="②"];
+		telegraf->influxdb;
+	}
+	
+	subgraph cluster_show {
+		grafana[label="Grafana\n展示监控数据"];
+	}
+	
+	subgraph cluster_alert {
+		kapacitor[label="Kapacitor\n处理报警"];
+		zabbix_alert[label="zabbix-alert\n发送报警"];
+		alerta[label="Alerta\n展示报警"];
+	}
+	
+	user->cmdb[label="增删改\n上下线"];
+	influxdb:e->kapacitor;
+	kapacitor->zabbix_alert;
+	
+	kapacitor->alerta;
+	influxdb:w->grafana;
+	
+	urlmon[label="urlmon.py",shape="none"];
+	telegraf_cron[label="telegraf-cron.sh",shape="none"];
+	k2zabbix[label="k2zabbix.py",shape="none"];
+	urlmon->cmdb:e[rank="same"];
+	k2zabbix->kapacitor:e;
+	telegraf_cron->gitlab:e;
+	label="①urlmon.py(cron)生成并同步配置\n②telegraf-cron.sh(cron)拉取配置监控telegraf运行"
+
+}
