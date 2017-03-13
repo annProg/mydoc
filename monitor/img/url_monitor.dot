@@ -1,0 +1,46 @@
+digraph url_monitor {
+	rank="same";
+	fontname = "Courier New, SimSun";
+	node [shape=Mrecord,fontname="MONACO,Courier New,SimSun"];
+	edge [fontname="Courier New,SimSun"];
+
+	user[label="User"];
+	cmdb[label="iTop-CMDB\n用户前端"];
+	gitlab[label="GitLab\n配置存储"];
+	cmdb->gitlab[label="②"];
+
+	subgraph cluster_collect {
+		telegraf1[label="Telegraf China"];
+		telegraf2[label="Telegraf US"];
+		telegraf3[label="Telegraf HK"];
+		telegraf4[label="Telegraf Other..."];
+	}
+	gitlab->{telegraf1,telegraf2,telegraf3,telegraf4}[label="③"];
+	{telegraf1,telegraf2,telegraf3,telegraf4}->influxdb;
+	
+	influxdb[label="InfluxDB\n存储监控数据"];
+
+	grafana[label="Grafana\n展示监控数据"];
+	
+	kapacitor[label="Kapacitor\n处理报警"];
+	zabbix_alert[label="zabbix-alert\n发送报警"];
+	alerta[label="Alerta\n展示报警"];
+	
+	user->cmdb[label="①"];
+	influxdb:e->kapacitor;
+	kapacitor->zabbix_alert;
+	
+	kapacitor->alerta;
+	influxdb:w->grafana;
+	
+	urlmon[label="urlmon.py",shape="none"];
+	telegraf_cron[label="telegraf-cron.sh",shape="none"];
+	k2zabbix[label="k2zabbix.py",shape="none"];
+	urlmon->cmdb:w[rank="same"];
+	k2zabbix->kapacitor:e[label="④"];
+	telegraf_cron->gitlab:e;
+	label="\n\n①用户对URL增删改上下线操作
+②urlmon.py(cron)生成并同步配置
+③telegraf-cron.sh(cron)拉取配置并决定telegraf节点角色
+④k2zabbix.py将kapacitor报警转换为zabbix-alert规定的格式"
+}
