@@ -6,6 +6,12 @@
 
 ![](img/zabbix-alert.png)
 
+## 增加Media Type
+
+- type: script
+- script name: zabbix-alert/reduce.py
+- script parameters: {ALERT.SENDTO}, {ALERT.SUBJECT}, {ALERT.MESSAGE}
+
 ## 配置动作
 
 默认信息
