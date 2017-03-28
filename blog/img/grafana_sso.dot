@@ -1,0 +1,55 @@
+digraph grafana_sso {
+	label="Grafana SSO Login Flow Chart"
+	node [shape=record, fontsize=11];	
+	user[label="User Visit"];
+	
+	user -> {nginx_ifapi,nginx_iflogout};
+	nginx_ifapi -> api [label="yes"];
+	nginx_iflogout -> logout [label="yes"];
+	
+	subgraph cluster_nginx {
+		label="Nginx Proxy with sso.lua";
+		nginx_ifapi[shape=diamond, label="is /api/"];
+		nginx_iflogout[shape=diamond, label="is /logout/"];
+		api[label="run api"];
+		logout[label="run Logout"];
+		cookie[shape=diamond, label="run isCookieExist"];
+		dologin[label="run doLogin"];
+		login[label="run Login"];
+		getssouser[label="run getSSOUser", style="filled", fillcolor="yellow"];
+		gettoken[label="getToken"];
+		checktoken[shape=diamond, label="run checkToken"];
+		isadmin[shape=diamond, label="run isAdmin"];
+	}
+	
+	{nginx_ifapi,nginx_iflogout} -> cookie[label="no"];
+	cookie->dologin[label="no"];
+	cookie->checktoken[label="yes"];
+	checktoken->login[label="yes"];
+	checktoken->dologin[label="no"];
+	
+	dologin->getssouser;
+	getssouser->getssouser[label="failed"]
+	getssouser->isadmin[label="succ"];
+	isadmin->gettoken:w[label="yes"];
+	isadmin->gettoken:e[label="no"];
+	gettoken->login;
+	
+	subgraph cluster_sso {
+		label="flow of getSSOUser";
+		logurl[label="\[SSO\]Login API"];
+		m_token[label="is ssotoken exist", shape=diamond];
+		sign[label="generate sign"];
+		checksign[label="\[SSO\]checkSign API", shape=diamond];
+		httpclient[label="ngx.location.capture && proxy_pass \nas httpclient to visit sso checkSign API", shape=note]
+		signok[label="return user"];
+	}
+	
+	getssouser2[label="run getSSOUser",style="filled", fillcolor="yellow"];
+	getssouser2->m_token;
+	m_token->logurl[label="no"];
+	m_token->sign[label="yes"];
+	sign->httpclient->checksign;
+	checksign->signok[label="yes"];
+	checksign->logurl[label="no"];
+}
