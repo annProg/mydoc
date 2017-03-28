@@ -203,7 +203,7 @@ end
 
 -- api do not use auth.proxy
 function api()
-	if ngx.re.match(ngx.var.request_uri, "api") then
+	if ngx.re.match(ngx.var.request_uri, "/api/") then
 		ngx.req.clear_header("X-WEBAUTH-USER")
 		ngx.exec("@client")
 	end
