@@ -1,0 +1,31 @@
+digraph account_manage {
+	label = "\n基于iTop管理服务器账号";
+	node[fontname="Microsoft YaHei"];
+	edge[fontname="Microsoft YaHei"];
+	fontname = "Microsoft YaHei";
+	user[label=<<table border="0" cellborder="0"><tr><td><img src="images/person.png"/></td></tr><tr><td>用户</td></tr></table>>, shape=none];
+
+	subgraph cluster_cmdb {
+		label="iTop/lnkUserToServer\n"
+		ticket[shape="tab", label="UserRequest"];
+		admin[label=<<table border="0" cellborder="0"><tr><td><img src="images/person.png"/></td></tr><tr><td>运维或服务器管理员</td></tr></table>>, shape=none];
+		resolve[label="审批", shape="diamond"];
+		disable[label="set status disable", shape="cds"];
+		enable[label="set status enable", shape="cds"];
+		lnk[shape="cylinder", label="iTop/lnkUserToServer", style="filled", fillcolor="skyblue"];
+		owner[shape="cylinder", label="iTop/Server", style="filled", fillcolor="skyblue"];		
+	}
+	user->ticket[label="提交工单"];
+	ticket->admin[label="工单拆分/自动分配"];
+	admin->resolve;
+	resolve->enable[label="resolved"];
+	resolve->disable[label="reject"];
+	{disable,enable}->lnk;
+	
+	cmdbapi[shape="component", label="cmdbApi"];
+	server[label=<<table border="0" cellborder="0"><tr><td><img src="images/server.png"/></td></tr><tr><td>Server/Cron</td></tr></table>>, shape=none];
+	
+	lnk->cmdbapi;
+	owner->cmdbapi[label="Server Admin List\npam_on->ACCOUNTS_OK\npam_off->PAM_OFF"];
+	cmdbapi->server;
+}
