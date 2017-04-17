@@ -1,0 +1,49 @@
+digraph account_m_server {
+	fontname = "MicroSoft Yahei";
+	fontsize = "18px";
+	node[fontname="MicroSoft Yahei",shape=record, fontsize="12px"];
+	edge[fontname="MicroSoft Yahei", fontsize="10px"];
+	
+	subgraph cluster_cmdbapi {
+		label="账号查询接口";
+		bgcolor="mintcream";
+		cmdbapi[label="cmdbApi", shape="component"];
+		accounts_ok[label="ACCOUNTS_OK"];
+		pam_off[label="PAM_OFF"];
+		//error[label="ERROR"];
+		//notfound[label="NOT FOUND"];
+		//denied[label="Permission denied"];
+		default[label="DEFAULT/ERROR/NOT FOUND/Permission denied"];
+	}
+	
+	cmdbapi->{accounts_ok, pam_off, default};
+	
+	subgraph cluster_server {
+		label="服务器cron脚本";
+		pam[label="/etc/pam.d/sshd", shape="note"];
+		user[label="/etc/scloud_sshduser", shape="note"];
+		sudo[label="/etc/sudoers.d/cmdb", shape="note"];
+		old_sudo_zx[label="/etc/sudoers.d/old_sudo_zx", shape="note"];
+		ext[label="直接退出", shape="note"];
+	}
+	accounts_ok -> pam[label="添加pam_listfile.so"];
+	pam->user[label="添加用户列表"];
+	user->sudo[label="添加sudo配置"];
+	user->old_sudo_zx[label="删除US_DEVEL, chattr +i"];
+	
+	pam_off->pam[label="恢复/删除pam_listfile.so", color="red", style="dashed"];
+	pam->old_sudo_zx[label="chattr -i\n执行puppet同步", color="red", style="dashed"];
+	
+	{default}->ext;
+	
+	subgraph cluster_cmdb {
+		label = "CMDB端"
+		ticket[label=" 工单系统"];
+		admin[label=" 服务器属性_联系人(管理员)"];
+		onoff[label=" 服务器属性_pam开关"];
+	}
+	
+	
+	
+	{ticket, admin, onoff} -> cmdbapi;
+}
