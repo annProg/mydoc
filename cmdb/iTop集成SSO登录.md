@@ -118,7 +118,7 @@ private static function GetOrgID($org=ORGSSO)
 
 private function GetPersonID($login, $nickName="")
 {
-	$sEmail = $login . "@le.com";
+	$sEmail = $login . "@xxx.com";
 	//$sPerson = MetaModel::GetObjectByColumn('Person', 'email', $sEmail,false);
 	$sPerson = MetaModel::GetObjectFromOQL('SELECT Person WHERE email=:email', array('email'=>$sEmail));
 	//if($login != SSOUSER)
